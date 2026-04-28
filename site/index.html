@@ -21,7 +21,10 @@
       body { font: 16px/1.6 system-ui, -apple-system, sans-serif; }
       main { max-width: 720px; margin: 0 auto; padding: 3rem 1.25rem; }
       h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
-      p.lede { color: var(--muted); margin: 0 0 2rem; }
+      p.lede { color: var(--muted); margin: 0 0 1rem; }
+      p.updated { margin: 0 0 2rem; font-size: .9rem; }
+      p.updated .label { color: var(--muted); }
+      p.updated time { font-variant-numeric: tabular-nums; }
       h2 { font-size: 1.05rem; margin: 1.75rem 0 .5rem; }
       a { color: var(--accent); }
       code, pre { background: var(--code-bg); border-radius: 4px; font-family: ui-monospace, monospace; }
@@ -36,6 +39,7 @@
     <main>
       <h1>Pubky DX Stats — Data</h1>
       <p class="lede">Daily snapshots of GitHub, npm, and crates.io activity for the <a href="https://github.com/pubky">Pubky</a> org.</p>
+      <p class="updated"><span class="label">Last collection:</span> <time id="last-collected" datetime="{{LAST_COLLECTED_ISO}}">{{LAST_COLLECTED_DISPLAY}}</time></p>
 
       <h2>Endpoint</h2>
       <p><a href="./metrics.json"><code>./metrics.json</code></a> &mdash; full snapshot history, JSON array.</p>
@@ -67,5 +71,20 @@
 
       <footer>CC0 / public data.</footer>
     </main>
+    <script>
+      (function () {
+        var el = document.getElementById('last-collected');
+        if (!el) return;
+        var d = new Date(el.getAttribute('datetime'));
+        if (isNaN(d.getTime())) return;
+        var diff = (Date.now() - d.getTime()) / 1000;
+        var rel;
+        if (diff < 60) rel = 'just now';
+        else if (diff < 3600) rel = Math.round(diff / 60) + ' min ago';
+        else if (diff < 86400) rel = Math.round(diff / 3600) + ' h ago';
+        else rel = Math.round(diff / 86400) + ' d ago';
+        el.textContent = el.textContent + ' (' + rel + ')';
+      })();
+    </script>
   </body>
 </html>

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pubky DX Stats — Data</title>
+    <meta name="description" content="Daily DX metrics for the Pubky org, exposed as JSON." />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fg: #111;
+        --muted: #666;
+        --bg: #fafafa;
+        --accent: #2b6cb0;
+        --code-bg: #eee;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root { --fg: #eee; --muted: #999; --bg: #111; --accent: #7aa9d8; --code-bg: #222; }
+      }
+      html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); }
+      body { font: 16px/1.6 system-ui, -apple-system, sans-serif; }
+      main { max-width: 720px; margin: 0 auto; padding: 3rem 1.25rem; }
+      h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
+      p.lede { color: var(--muted); margin: 0 0 2rem; }
+      h2 { font-size: 1.05rem; margin: 1.75rem 0 .5rem; }
+      a { color: var(--accent); }
+      code, pre { background: var(--code-bg); border-radius: 4px; font-family: ui-monospace, monospace; }
+      code { padding: 1px 5px; font-size: .92em; }
+      pre { padding: .9rem 1rem; overflow-x: auto; font-size: .85rem; }
+      ul { padding-left: 1.25rem; }
+      li { margin: .15rem 0; }
+      footer { margin-top: 3rem; color: var(--muted); font-size: .85rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Pubky DX Stats — Data</h1>
+      <p class="lede">Daily snapshots of GitHub, npm, and crates.io activity for the <a href="https://github.com/pubky">Pubky</a> org.</p>
+
+      <h2>Endpoint</h2>
+      <p><a href="./metrics.json"><code>./metrics.json</code></a> &mdash; full snapshot history, JSON array.</p>
+
+      <h2>Shape</h2>
+<pre><code>[
+  {
+    "date": "YYYY-MM-DD",
+    "github": {
+      "org_followers": number,
+      "repos": { "&lt;repo&gt;": { "stars": n, "forks": n, "open_issues": n } }
+    },
+    "npm":   { "&lt;package&gt;": { "weekly": n } },
+    "crates":{ "&lt;crate&gt;":   { "recent": n, "total": n } },
+    "dependents": { "&lt;crate&gt;": { "rust": n, "npm": n } },
+    "manual": { "ttfhw_minutes": n|null, "active_builders": n|null, ... }
+  },
+  ...
+]</code></pre>
+
+      <h2>Cadence</h2>
+      <p>Refreshed every 12 hours via GitHub Actions.</p>
+
+      <h2>Links</h2>
+      <ul>
+        <li>Dashboard: <a href="https://its-gaib.github.io/dx-stats/">its-gaib.github.io/dx-stats</a></li>
+        <li>Source: <a href="https://github.com/its-gaib/dx-stats-data">github.com/its-gaib/dx-stats-data</a></li>
+      </ul>
+
+      <footer>CC0 / public data.</footer>
+    </main>
+  </body>
+</html>

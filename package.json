@@ -1,0 +1,19 @@
+{
+  "name": "dx-stats-data",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Daily DX metrics for the Pubky org, published as JSON via GitHub Pages.",
+  "scripts": {
+    "collect": "tsx scripts/collect-metrics.ts",
+    "build": "tsx scripts/build-site.ts"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}

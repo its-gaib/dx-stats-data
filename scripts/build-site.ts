@@ -24,18 +24,27 @@ if (!Array.isArray(snapshots)) {
 
 writeFileSync(path.join(DIST_DIR, "metrics.json"), JSON.stringify(snapshots), "utf8");
 
-// Derive "last collection" from the most recent commit that touched the YAML.
-// Requires fetch-depth: 0 in CI so the file's history is available.
+// Derive "last collection" from the most recent commit whose message marks a
+// collector run. Filtering by `--grep` avoids attributing manual YAML edits
+// (e.g. schema cleanups) to the collector. Requires fetch-depth: 0 in CI.
+const COLLECTOR_COMMIT_PREFIX = "^chore: collect dx metrics";
 let lastCollectedIso: string;
 try {
   lastCollectedIso = execFileSync(
     "git",
-    ["log", "-1", "--format=%cI", "--", "data/metrics.yaml"],
+    [
+      "log",
+      "-1",
+      "--format=%cI",
+      `--grep=${COLLECTOR_COMMIT_PREFIX}`,
+      "--",
+      "data/metrics.yaml",
+    ],
     { encoding: "utf8" },
   ).trim();
-  if (!lastCollectedIso) throw new Error("empty git log output");
+  if (!lastCollectedIso) throw new Error("no collector commit found yet");
 } catch (err) {
-  console.warn("Could not read git log for data/metrics.yaml; falling back to now.", err);
+  console.warn("Could not derive last-collection timestamp; falling back to now.", err);
   lastCollectedIso = new Date().toISOString();
 }
 

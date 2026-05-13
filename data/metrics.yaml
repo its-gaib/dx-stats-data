@@ -4215,3 +4215,108 @@
     docs_monthly_visitors: null
     bounty_completion_rate: null
     events_attended: null
+- date: '2026-05-13'
+  github:
+    org_followers: 143
+    repos:
+      pkdns-resolver-extension:
+        stars: 5
+        forks: 0
+        open_issues: 0
+      pubky-tls-proxy:
+        stars: 7
+        forks: 1
+        open_issues: 0
+      pubky-app:
+        stars: 19
+        forks: 4
+        open_issues: 198
+      pubky-ring:
+        stars: 10
+        forks: 2
+        open_issues: 41
+      pubky-app-specs:
+        stars: 8
+        forks: 6
+        open_issues: 11
+      pwpw:
+        stars: 6
+        forks: 0
+        open_issues: 1
+      react-native-pubky:
+        stars: 5
+        forks: 3
+        open_issues: 0
+      pubky-nexus:
+        stars: 19
+        forks: 7
+        open_issues: 55
+      pubky-explorer:
+        stars: 12
+        forks: 4
+        open_issues: 6
+      atomicity:
+        stars: 23
+        forks: 2
+        open_issues: 0
+      pubky-knowledge-base:
+        stars: 8
+        forks: 6
+        open_issues: 3
+      pkdns:
+        stars: 189
+        forks: 18
+        open_issues: 8
+      pubky-beta:
+        stars: 11
+        forks: 2
+        open_issues: 125
+      pubky-core:
+        stars: 77
+        forks: 27
+        open_issues: 57
+      mainline:
+        stars: 93
+        forks: 19
+        open_issues: 9
+      pkarr:
+        stars: 402
+        forks: 40
+        open_issues: 17
+  npm:
+    '@synonymdev/pubky':
+      weekly: 657
+    '@synonymdev/react-native-pubky':
+      weekly: 148
+    '@synonymdev/pkarr':
+      weekly: 22
+    '@synonymdev/pubky-app-specs':
+      weekly: 0
+  crates:
+    pkarr:
+      recent: 282441
+      total: 749701
+    pubky:
+      recent: 1973
+      total: 18518
+  dependents:
+    pkarr:
+      rust: 647
+      npm: 44
+    pubky:
+      rust: 20
+      npm: 60
+    pubky-app-specs:
+      rust: 6
+      npm: 56
+    mainline:
+      rust: 215
+      npm: 0
+  manual:
+    ttfhw_minutes: null
+    active_builders: null
+    community_projects: null
+    homeserver_nodes: null
+    docs_monthly_visitors: null
+    bounty_completion_rate: null
+    events_attended: null

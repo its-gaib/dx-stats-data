@@ -12120,3 +12120,116 @@
     docs_monthly_visitors: null
     bounty_completion_rate: null
     events_attended: null
+- date: '2026-07-25'
+  github:
+    org_followers: 149
+    repos:
+      pkdns-resolver-extension:
+        stars: 5
+        forks: 0
+        open_issues: 0
+      homeserver-dashboard:
+        stars: 9
+        forks: 0
+        open_issues: 4
+      paykit-rs:
+        stars: 5
+        forks: 0
+        open_issues: 14
+      pubky-tls-proxy:
+        stars: 7
+        forks: 1
+        open_issues: 0
+      pubky-app:
+        stars: 23
+        forks: 5
+        open_issues: 280
+      pubky-ring:
+        stars: 11
+        forks: 2
+        open_issues: 26
+      pubky-app-specs:
+        stars: 9
+        forks: 6
+        open_issues: 16
+      pwpw:
+        stars: 6
+        forks: 0
+        open_issues: 1
+      react-native-pubky:
+        stars: 6
+        forks: 3
+        open_issues: 0
+      pubky-nexus:
+        stars: 21
+        forks: 9
+        open_issues: 64
+      pubky-explorer:
+        stars: 12
+        forks: 4
+        open_issues: 6
+      atomicity:
+        stars: 23
+        forks: 3
+        open_issues: 0
+      pubky-knowledge-base:
+        stars: 8
+        forks: 5
+        open_issues: 1
+      pkdns:
+        stars: 191
+        forks: 17
+        open_issues: 8
+      pubky-beta:
+        stars: 11
+        forks: 2
+        open_issues: 125
+      pubky-core:
+        stars: 84
+        forks: 30
+        open_issues: 74
+      mainline:
+        stars: 100
+        forks: 20
+        open_issues: 12
+      pkarr:
+        stars: 439
+        forks: 41
+        open_issues: 15
+  npm:
+    '@synonymdev/pubky':
+      weekly: 1005
+    '@synonymdev/react-native-pubky':
+      weekly: 229
+    '@synonymdev/pkarr':
+      weekly: 222
+    '@synonymdev/pubky-app-specs':
+      weekly: 0
+  crates:
+    pkarr:
+      recent: 337588
+      total: 1011846
+    pubky:
+      recent: 2655
+      total: 20818
+  dependents:
+    pkarr:
+      rust: 644
+      npm: 46
+    pubky:
+      rust: 24
+      npm: 64
+    pubky-app-specs:
+      rust: 7
+      npm: 55
+    mainline:
+      rust: 240
+      npm: 0
+  manual:
+    ttfhw_minutes: null
+    active_builders: null
+    community_projects: null
+    homeserver_nodes: null
+    docs_monthly_visitors: null
+    bounty_completion_rate: null
+    events_attended: null

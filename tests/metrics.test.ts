@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import yaml from "js-yaml";
+import { dump, load } from "js-yaml";
 import { validateSnapshots } from "../scripts/metrics";
 import { snapshot } from "./fixtures/snapshot";
 
 test("the committed metrics history satisfies the shared schema", () => {
-  const history: unknown = yaml.load(readFileSync("data/metrics.yaml", "utf8"));
+  const history: unknown = load(readFileSync("data/metrics.yaml", "utf8"));
   validateSnapshots(history);
   assert.ok(history.length > 0);
 });
@@ -32,7 +32,7 @@ test("rejects non-array history and non-mapping snapshots", () => {
   }
 });
 
-test("requires calendar-valid YYYY-MM-DD strings, including quoted YAML dates", () => {
+test("requires calendar-valid YYYY-MM-DD strings and rejects Date objects", () => {
   for (const date of [
     "2026-02-29", "2024-02-30", "2026-04-31", "2026-13-01", "2026-00-10",
     "2026-01-00", "2026-1-01", "26-01-01", "2026-01-01T00:00:00Z", "", null,
@@ -40,9 +40,15 @@ test("requires calendar-valid YYYY-MM-DD strings, including quoted YAML dates", 
   ]) {
     assert.throws(() => validateSnapshots([{ ...snapshot(), date }]), /valid YYYY-MM-DD string/);
   }
-  const unquoted = yaml.dump([snapshot()]).replace("date: '2026-01-01'", "date: 2026-01-01");
-  const parsed = yaml.load(unquoted);
-  assert.throws(() => validateSnapshots(parsed), /quote dates in YAML/);
+});
+
+test("accepts quoted and unquoted YAML dates as strings", () => {
+  for (const date of ["2026-01-01", "'2026-01-01'", '"2026-01-01"']) {
+    const source = dump([snapshot()]).replace(/date: [^\n]+/, `date: ${date}`);
+    const parsed = load(source);
+    validateSnapshots(parsed);
+    assert.deepEqual(parsed, [snapshot()]);
+  }
 });
 
 test("rejects duplicate and out-of-order dates", () => {

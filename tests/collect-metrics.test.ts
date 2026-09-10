@@ -13,7 +13,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import yaml from "js-yaml";
+import { dump, load } from "js-yaml";
 import type { ManualMetrics, MetricSnapshot } from "../scripts/metrics";
 
 const COLLECTOR = path.resolve(__dirname, "../scripts/collect-metrics.ts");
@@ -157,7 +157,7 @@ function runCollector(options: {
 function collected(result: ReturnType<typeof runCollector>): MetricSnapshot[] {
   assert.equal(result.status, 0, result.stderr);
   assert.ok(result.content, "collector should create data/metrics.yaml");
-  return yaml.load(result.content) as MetricSnapshot[];
+  return load(result.content) as MetricSnapshot[];
 }
 
 test("collects configured metrics, paginates repositories, and applies the five-star threshold", () => {
@@ -252,7 +252,7 @@ test("appends history and preserves the latest manual values, including zero and
     bounty_completion_rate: 0.75,
     events_attended: null,
   };
-  const result = runCollector({ history: yaml.dump([oldest, latest]) });
+  const result = runCollector({ history: dump([oldest, latest]) });
   const snapshots = collected(result);
   assert.equal(snapshots.length, 3);
   assert.deepEqual(snapshots.slice(0, 2), [oldest, latest]);
@@ -261,7 +261,7 @@ test("appends history and preserves the latest manual values, including zero and
 });
 
 test("skips a duplicate day without requests or rewriting the file", () => {
-  const history = `# Keep this file byte-for-byte.\n${yaml.dump([previousSnapshot(TODAY)])}`;
+  const history = `# Keep this file byte-for-byte.\n${dump([previousSnapshot(TODAY)])}`;
   const result = runCollector({ history, responses: {} });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /already exists, skipping/);
@@ -318,9 +318,11 @@ test("continues collecting other services if repository discovery fails", () => 
 
 test("rejects invalid existing history before requests and preserves the original file", async (t) => {
   for (const [name, history] of Object.entries({
+    "empty YAML": "",
+    "comment-only YAML": "# No snapshots yet.\n",
     "mapping root": "snapshots: []\n",
     "null root": "null\n",
-    "malformed snapshot": yaml.dump([{ date: "2026-09-09" }]),
+    "malformed snapshot": dump([{ date: "2026-09-09" }]),
     "invalid YAML": "[unterminated\n",
   })) {
     await t.test(name, () => {
@@ -335,7 +337,7 @@ test("rejects invalid existing history before requests and preserves the origina
 });
 
 test("rejects a malformed API metric before overwriting valid history", () => {
-  const history = yaml.dump([previousSnapshot()]);
+  const history = dump([previousSnapshot()]);
   const responses = defaultResponses();
   responses[NPM["@synonymdev/pubky"]] = { body: { downloads: "unexpected value" } };
   const result = runCollector({ history, responses });

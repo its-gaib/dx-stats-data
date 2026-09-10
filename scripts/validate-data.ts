@@ -3,10 +3,10 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import yaml from "js-yaml";
+import { load } from "js-yaml";
 import { validateSnapshots } from "./metrics";
 
-const snapshots: unknown = yaml.load(
+const snapshots: unknown = load(
   readFileSync(path.join(process.cwd(), "data", "metrics.yaml"), "utf8"),
 );
 validateSnapshots(snapshots);

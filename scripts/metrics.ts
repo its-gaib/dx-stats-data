@@ -91,7 +91,7 @@ export function validateSnapshots(value: unknown): asserts value is MetricSnapsh
       !Number.isFinite(Date.parse(`${date}T00:00:00.000Z`)) ||
       new Date(`${date}T00:00:00.000Z`).toISOString().slice(0, 10) !== date
     ) {
-      throw new Error(`${location}.date must be a valid YYYY-MM-DD string (quote dates in YAML)`);
+      throw new Error(`${location}.date must be a valid YYYY-MM-DD string`);
     }
     if (previousDate !== undefined && date <= previousDate) {
       throw new Error(`${location}.date must be strictly later than ${previousDate}`);

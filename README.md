@@ -20,7 +20,18 @@ YAML is the in-repo source of truth (human-readable diffs); JSON is the publishe
 
 ## Local
 
-Use Node.js 22 or 24 (the collection and publishing workflows use 24).
+Use Node.js 24 LTS, selected by [`.nvmrc`](.nvmrc), and npm 12.0.2, selected by
+`packageManager` in [`package.json`](package.json). Node 22.22.2+ and 24.15.0+ are
+supported; CI tests the latest release in both major versions. Collection and
+publishing use the latest Node 24 release.
+
+With [nvm](https://github.com/nvm-sh/nvm), set up the toolchain with:
+
+```bash
+nvm install
+nvm use
+npm install --global "$(node -p 'require("./package.json").packageManager')"
+```
 
 ```bash
 npm ci
@@ -48,9 +59,10 @@ and delays are mocked; file writes and test Git history stay in temporary
 directories. No API token or live collection is needed. Dependency installation
 and the audit require access to the npm registry.
 
-History validation requires real, quoted `YYYY-MM-DD` dates in strictly increasing
+History validation requires real `YYYY-MM-DD` strings in strictly increasing
 order, nonnegative integer API counts, and nonnegative finite manual values or
-`null`. Repository and package names can change over time, and older snapshots
+`null`. js-yaml 5 uses the YAML 1.2 core schema: quoted and unquoted dates both
+remain strings. Repository and package names can change over time, and older snapshots
 may omit `dependents`. The validator and Pages builder require a nonempty history;
 the collector can start from an empty history and rejects malformed existing data
 before making requests or writing changes.
@@ -64,6 +76,30 @@ before uploading the artifact; this also covers commits made by the collector's
 `GITHUB_TOKEN`, which do not trigger ordinary push workflows. Only the deployment
 job receives Pages write and OIDC permissions. Manual collection and publishing
 are restricted to `main`.
+
+## Updating dependencies and tooling
+
+Run `npm outdated` to compare installed, compatible, and latest dependency
+versions. Review major-version migration notes, then update the direct dependency
+ranges in `package.json` and regenerate `package-lock.json` with `npm install`.
+Use `npm update` for updates within the existing ranges. js-yaml includes its own
+TypeScript declarations; the Node types track the oldest supported runtime (22).
+
+npm 12 blocks dependency install scripts by default. `allowScripts` approves the
+installed esbuild version so it can set up its native binary. After an update,
+inspect `npm install-scripts ls`; review any required scripts before approving
+specific packages with `npm install-scripts approve <package>` and running
+`npm rebuild`. Keep approvals pinned to reviewed versions.
+
+To update npm, change `packageManager` and its compatible `engines.npm` range,
+then repeat the toolchain setup above. Keep `.nvmrc`, the supported Node engine
+ranges, and the CI matrix consistent. Review the GitHub-owned actions in all
+three workflows; update the actionlint Docker tag in `ci.yml` and its documented
+local version together when a new release is available.
+
+Validate updates with a clean `npm ci`, `npm run check`,
+`npm audit --audit-level=high`, and `actionlint`. Commit the manifest, lockfile,
+and any necessary code or configuration changes together.
 
 ## Consumers
 

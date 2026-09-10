@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import { devNull, tmpdir } from "node:os";
 import path from "node:path";
 import test, { type TestContext } from "node:test";
-import yaml from "js-yaml";
+import { dump, load } from "js-yaml";
 import { snapshot } from "./fixtures/snapshot";
 
 const ROOT = process.cwd();
@@ -21,7 +21,7 @@ const TEST_ENV = {
   GIT_COMMITTER_EMAIL: "metrics-ci@example.invalid",
 };
 
-function fixture(t: TestContext, source = yaml.dump([snapshot()])): string {
+function fixture(t: TestContext, source = dump([snapshot()])): string {
   const dir = mkdtempSync(path.join(tmpdir(), "dx-stats-build-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   mkdirSync(path.join(dir, "data"));
@@ -70,7 +70,7 @@ test("build preserves the full committed history and uses the collector commit's
   const result = run(dir);
   assert.equal(result.status, 0, result.stderr);
   const json = JSON.parse(readFileSync(path.join(dir, "dist", "metrics.json"), "utf8"));
-  assert.deepEqual(json, yaml.load(source));
+  assert.deepEqual(json, load(source));
   assert.ok(Array.isArray(json));
   const html = readFileSync(path.join(dir, "dist", "index.html"), "utf8");
   assert.doesNotMatch(html, /\{\{[^}]+\}\}/);
@@ -100,7 +100,9 @@ test("build falls back to its current time when no collector commit exists", (t)
 test("build and validation CLI reject malformed or empty history before writing artifacts", (t) => {
   const invalidSnapshot = snapshot();
   invalidSnapshot.github.repos.example.stars = -1;
-  for (const source of ["not: a history\n", "[]\n", "[unterminated\n", yaml.dump([invalidSnapshot])]) {
+  for (const source of [
+    "", "# No snapshots yet.\n", "not: a history\n", "[]\n", "[unterminated\n", dump([invalidSnapshot]),
+  ]) {
     const dir = fixture(t, source);
     for (const script of ["build-site.ts", "validate-data.ts"]) {
       const result = run(dir, script);

@@ -7,7 +7,7 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
-import yaml from "js-yaml";
+import { dump, load } from "js-yaml";
 import {
   validateSnapshots,
   type RepoMetrics,
@@ -163,7 +163,7 @@ async function main() {
   let existing: MetricSnapshot[] = [];
   if (existsSync(DATA_FILE)) {
     const content = readFileSync(DATA_FILE, "utf8");
-    const parsed = yaml.load(content);
+    const parsed = load(content);
     validateSnapshots(parsed);
     existing = parsed;
   }
@@ -246,7 +246,7 @@ async function main() {
     mkdirSync(dir, { recursive: true });
   }
 
-  writeFileSync(DATA_FILE, yaml.dump(existing, { lineWidth: -1, noRefs: true }), "utf8");
+  writeFileSync(DATA_FILE, dump(existing, { lineWidth: -1, noRefs: true }), "utf8");
   console.log(`Collected metrics for ${today}. Total entries: ${existing.length}`);
 }
 

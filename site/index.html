@@ -54,14 +54,26 @@
     },
     "npm":   { "&lt;package&gt;": { "weekly": n } },
     "crates":{ "&lt;crate&gt;":   { "recent": n, "total": n } },
-    "dependents": { "&lt;crate&gt;": { "rust": n, "npm": n } },
+    "dependents": {
+      "&lt;crate&gt;": {
+        "rust": n|null, "npm": n|null,
+        "source": {
+          "status": "current|stale|unverified|unavailable",
+          "observed_at": "UTC timestamp"|null,
+          "run_id": "UTC timestamp"|null,
+          "checked_at": "UTC timestamp",
+          "reason": "optional reason code"
+        }
+      }
+    },
     "manual": { "ttfhw_minutes": n|null, "active_builders": n|null, ... }
   },
   ...
 ]</code></pre>
 
       <h2>Cadence</h2>
-      <p>Refreshed every 12 hours via GitHub Actions.</p>
+      <p>Collected at 00:00 and 12:00 UTC via GitHub Actions, subject to scheduling delays. Each date has one record; later runs refresh that day's dependents.</p>
+      <p>Dependents are measured upstream weekly. Their <code>observed_at</code> timestamp records the measurement time; the collection time above can be newer. Stale counts retain their original timestamp. Unavailable counts are <code>null</code>; historical entries without <code>source</code> are unverified.</p>
 
       <h2>Links</h2>
       <ul>

@@ -7,7 +7,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
-import yaml from "js-yaml";
+import { load } from "js-yaml";
 import { validateSnapshots } from "./metrics";
 
 const ROOT = process.cwd();
@@ -16,7 +16,7 @@ const SITE_DIR = path.join(ROOT, "site");
 const DIST_DIR = path.join(ROOT, "dist");
 
 const yamlText = readFileSync(SRC_YAML, "utf8");
-const snapshots = yaml.load(yamlText);
+const snapshots = load(yamlText);
 validateSnapshots(snapshots);
 if (snapshots.length === 0) throw new Error("metrics.yaml must contain at least one snapshot");
 

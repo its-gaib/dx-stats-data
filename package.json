@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "description": "Daily DX metrics for the Pubky org, published as JSON via GitHub Pages.",
+  "packageManager": "npm@12.0.2",
   "engines": {
-    "node": "^22.0.0 || ^24.0.0"
+    "node": "^22.22.2 || ^24.15.0",
+    "npm": "^12.0.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
   },
   "scripts": {
     "collect": "tsx scripts/collect-metrics.ts",
@@ -15,12 +20,11 @@
     "check": "npm run typecheck && npm test && npm run validate:data && npm run build"
   },
   "dependencies": {
-    "js-yaml": "^4.3.2"
+    "js-yaml": "^5.4.1"
   },
   "devDependencies": {
-    "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.20.2",
     "tsx": "^4.23.13",
-    "typescript": "^5"
+    "typescript": "^7.0.2"
   }
 }

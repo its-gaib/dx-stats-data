@@ -6,25 +6,42 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: collect-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   collect:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
         with:
-          node-version: '20'
-          cache: npm
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
 
       - run: npm ci
+
+      - name: Check collector, history, and site
+        run: npm run check
 
       - name: Collect metrics
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run collect
+
+      - name: Validate collected data and build
+        run: npm run validate:data && npm run build
 
       - name: Commit and push if changed
         run: |

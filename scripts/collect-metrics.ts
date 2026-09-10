@@ -8,6 +8,15 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
+import {
+  validateSnapshots,
+  type RepoMetrics,
+  type CrateDependents,
+  type NpmPackageMetrics,
+  type CrateMetrics,
+  type ManualMetrics,
+  type MetricSnapshot,
+} from "./metrics";
 
 // --- Configuration ---
 
@@ -28,50 +37,6 @@ const DEPENDENTS_ANALYSIS_CRATES = ["pkarr", "pubky", "pubky-app-specs", "mainli
 const DEPENDENTS_ANALYSIS_BASE = "https://its-gaib.github.io/pubky-dependents-analysis";
 
 const DATA_FILE = path.resolve(process.cwd(), "data", "metrics.yaml");
-
-// --- Types (matching lib/data/types.ts) ---
-
-interface RepoMetrics {
-  stars: number;
-  forks: number;
-  open_issues: number;
-}
-
-interface CrateDependents {
-  rust: number;
-  npm: number;
-}
-
-interface NpmPackageMetrics {
-  weekly: number;
-}
-
-interface CrateMetrics {
-  recent: number;
-  total: number;
-}
-
-interface ManualMetrics {
-  ttfhw_minutes: number | null;
-  active_builders: number | null;
-  community_projects: number | null;
-  homeserver_nodes: number | null;
-  docs_monthly_visitors: number | null;
-  bounty_completion_rate: number | null;
-  events_attended: number | null;
-}
-
-interface MetricSnapshot {
-  date: string;
-  github: {
-    org_followers: number;
-    repos: Record<string, RepoMetrics>;
-  };
-  npm: Record<string, NpmPackageMetrics>;
-  crates: Record<string, CrateMetrics>;
-  dependents?: Record<string, CrateDependents>;
-  manual: ManualMetrics;
-}
 
 // --- API helpers ---
 
@@ -199,9 +164,8 @@ async function main() {
   if (existsSync(DATA_FILE)) {
     const content = readFileSync(DATA_FILE, "utf8");
     const parsed = yaml.load(content);
-    if (Array.isArray(parsed)) {
-      existing = parsed as MetricSnapshot[];
-    }
+    validateSnapshots(parsed);
+    existing = parsed;
   }
 
   // Check if today already collected
@@ -275,6 +239,7 @@ async function main() {
 
   // Append and write
   existing.push(snapshot);
+  validateSnapshots(existing);
 
   const dir = path.dirname(DATA_FILE);
   if (!existsSync(dir)) {

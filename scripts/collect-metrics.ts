@@ -11,12 +11,12 @@ import { dump, load } from "js-yaml";
 import {
   validateSnapshots,
   type RepoMetrics,
-  type CrateDependents,
   type NpmPackageMetrics,
   type CrateMetrics,
   type ManualMetrics,
   type MetricSnapshot,
 } from "./metrics";
+import { fetchDependentsAnalysis } from "./dependents";
 
 // --- Configuration ---
 
@@ -32,9 +32,6 @@ const NPM_PACKAGES = [
 ];
 
 const CRATES = ["pkarr", "pubky"];
-
-const DEPENDENTS_ANALYSIS_CRATES = ["pkarr", "pubky", "pubky-app-specs", "mainline"];
-const DEPENDENTS_ANALYSIS_BASE = "https://its-gaib.github.io/pubky-dependents-analysis";
 
 const DATA_FILE = path.resolve(process.cwd(), "data", "metrics.yaml");
 
@@ -103,26 +100,6 @@ async function fetchRepoStats(repo: string): Promise<RepoMetrics> {
   };
 }
 
-// --- Dependents (from pubky-dependents-analysis) ---
-
-async function fetchDependentsAnalysis(): Promise<Record<string, CrateDependents>> {
-  const result: Record<string, CrateDependents> = {};
-  for (const crate of DEPENDENTS_ANALYSIS_CRATES) {
-    const data = await fetchJson<{
-      total: number;
-      npm_dependents?: unknown[];
-    }>(`${DEPENDENTS_ANALYSIS_BASE}/${crate}.json`);
-
-    result[crate] = {
-      rust: data?.total ?? 0,
-      npm: Array.isArray(data?.npm_dependents) ? data.npm_dependents.length : 0,
-    };
-    console.log(`  dependents ${crate}: ${result[crate].rust} Rust, ${result[crate].npm} npm`);
-    await delay(200);
-  }
-  return result;
-}
-
 async function fetchOrgFollowers(): Promise<number> {
   const data = await fetchJson<{ followers: number }>(
     `https://api.github.com/orgs/${GITHUB_ORG}`,
@@ -156,8 +133,16 @@ async function fetchCrateStats(name: string): Promise<CrateMetrics> {
 
 // --- Main ---
 
+function saveSnapshots(snapshots: MetricSnapshot[]): void {
+  validateSnapshots(snapshots);
+  const dir = path.dirname(DATA_FILE);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  writeFileSync(DATA_FILE, dump(snapshots, { lineWidth: -1, noRefs: true }), "utf8");
+}
+
 async function main() {
-  const today = new Date().toISOString().slice(0, 10);
+  const checkedAt = new Date().toISOString();
+  const today = checkedAt.slice(0, 10);
 
   // Load existing data
   let existing: MetricSnapshot[] = [];
@@ -168,10 +153,17 @@ async function main() {
     existing = parsed;
   }
 
-  // Check if today already collected
-  if (existing.some((s) => s.date === today)) {
-    console.log(`Data for ${today} already exists, skipping.`);
-    process.exit(0);
+  // Later runs can pick up a newly published analysis or recover a failed fetch.
+  // Keep the first daily collection of unrelated metrics and manual edits intact.
+  const todayIndex = existing.findIndex((snapshot) => snapshot.date === today);
+  if (todayIndex !== -1) {
+    console.log(`Refreshing dependents for existing snapshot ${today}...`);
+    const dependents = await fetchDependentsAnalysis(existing, checkedAt);
+    if (JSON.stringify(existing[todayIndex].dependents) !== JSON.stringify(dependents)) {
+      existing[todayIndex] = { ...existing[todayIndex], dependents };
+      saveSnapshots(existing);
+    }
+    return;
   }
 
   console.log(`Collecting metrics for ${today}...`);
@@ -210,7 +202,7 @@ async function main() {
   }
 
   // Fetch dependents from pubky-dependents-analysis
-  const dependents = await fetchDependentsAnalysis();
+  const dependents = await fetchDependentsAnalysis(existing, checkedAt);
 
   // Carry forward manual KPIs from previous entry, or null
   const prevManual = existing.at(-1)?.manual;
@@ -239,14 +231,7 @@ async function main() {
 
   // Append and write
   existing.push(snapshot);
-  validateSnapshots(existing);
-
-  const dir = path.dirname(DATA_FILE);
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-
-  writeFileSync(DATA_FILE, dump(existing, { lineWidth: -1, noRefs: true }), "utf8");
+  saveSnapshots(existing);
   console.log(`Collected metrics for ${today}. Total entries: ${existing.length}`);
 }
 

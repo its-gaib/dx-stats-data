@@ -7,8 +7,35 @@ export interface RepoMetrics {
 }
 
 export interface CrateDependents {
-  rust: number;
-  npm: number;
+  rust: number | null;
+  npm: number | null;
+  source?: DependentsSource;
+}
+
+export const DEPENDENTS_MAX_AGE_MS = 8 * 24 * 60 * 60 * 1000;
+export const SOURCE_CLOCK_SKEW_MS = 5 * 60 * 1000;
+
+export const DEPENDENTS_REASONS = [
+  "fetch_failed", "invalid_source", "incomplete_source", "mixed_runs",
+  "source_too_old", "source_regressed", "unverified_source",
+] as const;
+
+export interface DependentsSource {
+  status: "current" | "stale" | "unverified" | "unavailable";
+  observed_at: string | null;
+  run_id: string | null;
+  checked_at: string;
+  reason?: typeof DEPENDENTS_REASONS[number];
+}
+
+/** Accept UTC timestamps from JavaScript and Python without normalizing provenance. */
+export function isUtcTimestamp(value: unknown): value is string {
+  if (
+    typeof value !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|\+00:00)$/.test(value)
+  ) return false;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 19) === value.slice(0, 19);
 }
 
 export interface NpmPackageMetrics {
@@ -60,8 +87,59 @@ function record(value: unknown, location: string): Record<string, unknown> {
 }
 
 function count(value: unknown, location: string): void {
-  if (typeof value !== "number" || !Number.isFinite(value) || !Number.isInteger(value) || value < 0) {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
     throw new Error(`${location} must be a nonnegative finite integer`);
+  }
+}
+
+function dependentsMap(value: unknown, location: string): void {
+  for (const [name, entry] of Object.entries(record(value, location))) {
+    const entryLocation = `${location}[${JSON.stringify(name)}]`;
+    const metrics = record(entry, entryLocation);
+    if (metrics.source === undefined) {
+      count(metrics.rust, `${entryLocation}.rust`);
+      count(metrics.npm, `${entryLocation}.npm`);
+      continue;
+    }
+
+    const sourceLocation = `${entryLocation}.source`;
+    const source = record(metrics.source, sourceLocation);
+    if (typeof source.status !== "string" || !["current", "stale", "unverified", "unavailable"].includes(source.status)) {
+      throw new Error(`${sourceLocation}.status is invalid`);
+    }
+    if (!isUtcTimestamp(source.checked_at)) throw new Error(`${sourceLocation}.checked_at must be a UTC timestamp`);
+    for (const field of ["observed_at", "run_id"]) {
+      if (source[field] !== null && !isUtcTimestamp(source[field])) {
+        throw new Error(`${sourceLocation}.${field} must be null or a UTC timestamp`);
+      }
+      if (typeof source[field] === "string" && Date.parse(source[field]) > Date.parse(source.checked_at) + SOURCE_CLOCK_SKEW_MS) {
+        throw new Error(`${sourceLocation}.${field} cannot be later than checked_at`);
+      }
+    }
+    if (source.reason !== undefined && !DEPENDENTS_REASONS.some((reason) => reason === source.reason)) {
+      throw new Error(`${sourceLocation}.reason is invalid`);
+    }
+    if (source.status === "unavailable") {
+      if (metrics.rust !== null || metrics.npm !== null || source.observed_at !== null || source.run_id !== null) {
+        throw new Error(`${sourceLocation}: unavailable counts and observation metadata must be null`);
+      }
+    } else {
+      count(metrics.rust, `${entryLocation}.rust`);
+      count(metrics.npm, `${entryLocation}.npm`);
+      if (source.status === "unverified") {
+        if (source.run_id !== null) throw new Error(`${sourceLocation}: unverified data cannot claim a complete run`);
+      } else if (source.observed_at === null || source.run_id === null) {
+        throw new Error(`${sourceLocation}: verified data requires observed_at and run_id`);
+      }
+      if (typeof source.run_id === "string" && typeof source.observed_at === "string" &&
+        Date.parse(source.run_id) > Date.parse(source.observed_at) + SOURCE_CLOCK_SKEW_MS) {
+        throw new Error(`${sourceLocation}: run_id cannot be later than observed_at`);
+      }
+      if (source.status === "current" && typeof source.observed_at === "string" &&
+        Date.parse(source.checked_at) - Date.parse(source.observed_at) > DEPENDENTS_MAX_AGE_MS) {
+        throw new Error(`${sourceLocation}: an observation older than eight days cannot be current`);
+      }
+    }
   }
 }
 
@@ -105,7 +183,7 @@ export function validateSnapshots(value: unknown): asserts value is MetricSnapsh
     metricMap(snapshot.crates, `${location}.crates`, ["recent", "total"]);
     // Dependents were added after collection began; names also change over time.
     if (snapshot.dependents !== undefined) {
-      metricMap(snapshot.dependents, `${location}.dependents`, ["rust", "npm"]);
+      dependentsMap(snapshot.dependents, `${location}.dependents`);
     }
 
     const manual = record(snapshot.manual, `${location}.manual`);

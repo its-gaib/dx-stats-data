@@ -12,11 +12,67 @@ JSON array of daily snapshots. See [`site/index.html`](site/index.html) for the 
 
 ## How it works
 
-- [`scripts/collect-metrics.ts`](scripts/collect-metrics.ts) appends one snapshot per day to [`data/metrics.yaml`](data/metrics.yaml).
-- [`.github/workflows/collect.yml`](.github/workflows/collect.yml) runs the collector every 12 hours and commits the YAML if it changed.
+- [`scripts/collect-metrics.ts`](scripts/collect-metrics.ts) appends one snapshot per day to [`data/metrics.yaml`](data/metrics.yaml). Later runs that day refresh only the dependents and their provenance, preserving all other metrics and manual edits.
+- [`.github/workflows/collect.yml`](.github/workflows/collect.yml) runs the collector at 00:00 and 12:00 UTC and commits the YAML if it changed. GitHub Actions may delay scheduled starts.
 - [`.github/workflows/pages.yml`](.github/workflows/pages.yml) converts the YAML to JSON via [`scripts/build-site.ts`](scripts/build-site.ts) and deploys `dist/` to Pages.
 
 YAML is the in-repo source of truth (human-readable diffs); JSON is the published wire format.
+
+## Dependents reliability and freshness
+
+The dependents collector reads the four configured JSON files from
+[pubky-dependents-analysis](https://github.com/its-gaib/pubky-dependents-analysis).
+It accepts a publication only when all four declare `collection.status: complete`
+and the same `collection.run_id`. Crate identities, required source counts,
+summary/list totals, numeric counts, and UTC timestamps must validate. A cached
+publication cannot move a previously verified observation backward. Each request
+has a 30-second timeout and does not receive the GitHub token.
+
+Each new `dependents[crate]` value includes additive `source` metadata:
+
+```json
+{
+  "rust": 613,
+  "npm": 28,
+  "source": {
+    "status": "current",
+    "observed_at": "2026-09-07T07:00:00+00:00",
+    "run_id": "2026-09-07T06:00:00+00:00",
+    "checked_at": "2026-09-10T12:00:00.000Z"
+  }
+}
+```
+
+`observed_at` is the original upstream measurement time; `checked_at` is this
+collector's attempt time. Rechecking or carrying forward a value never changes
+its observation time or run ID. Status is:
+
+| Status | Meaning |
+| --- | --- |
+| `current` | A verified publication observed no more than eight days ago. |
+| `stale` | A verified observation is older than eight days, or the latest fetch/publication failed validation and the previous verified counts were preserved. |
+| `unverified` | Only archived legacy counts exist, without proof of a complete analysis. Their original observation time is unknown unless previously recorded. |
+| `unavailable` | No archived observation is available. Both `rust` and `npm`, and their observation metadata, are `null`. |
+
+The eight-day window allows the weekly analysis cadence plus a day of recovery.
+A `reason` code explains failures (`fetch_failed`, `invalid_source`,
+`incomplete_source`, `mixed_runs`, `source_regressed`, `unverified_source`) or an
+expired observation (`source_too_old`). A valid complete count of zero remains
+zero; a missing count is never converted to zero. Failed or mixed publications
+preserve the last verified observation for each crate, falling back to archived
+legacy counts only if none is verified. New legacy publications cannot replace
+those archived values or supply an unrelated timestamp.
+
+Daily records reflect the last known values and their status on that date; they
+are not independent daily upstream measurements. A newer valid analysis or a
+recovered fetch can correct **today's** dependents during the next collection,
+including manual runs. Earlier records are preserved without interpolation or
+automatic repair of historical bad counts. Consumers should use `observed_at`
+and `run_id` to identify actual observations and show missing counts as gaps.
+
+For rollout, deploy consumer support for nullable counts and provenance first,
+then the upstream complete-publication contract, then this collector. Existing
+history without `source` remains valid and should be treated as unverified.
 
 ## Local
 
@@ -35,7 +91,7 @@ npm install --global "$(node -p 'require("./package.json").packageManager')"
 
 ```bash
 npm ci
-GITHUB_TOKEN=<token> npm run collect   # adds today's snapshot to data/metrics.yaml
+GITHUB_TOKEN=<token> npm run collect   # adds today or refreshes today's dependents
 npm run build                          # writes dist/metrics.json + dist/index.html
 ```
 

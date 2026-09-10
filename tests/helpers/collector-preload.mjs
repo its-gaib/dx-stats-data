@@ -21,7 +21,7 @@ globalThis.setTimeout = (callback, _delay, ...args) => nativeSetTimeout(callback
 globalThis.fetch = async (input, init) => {
   const url = String(input);
   const headers = Object.fromEntries(new Headers(init?.headers).entries());
-  appendFileSync(config.requestsFile, `${JSON.stringify({ url, headers })}\n`);
+  appendFileSync(config.requestsFile, `${JSON.stringify({ url, headers, hasSignal: init?.signal instanceof AbortSignal })}\n`);
 
   const response = config.responses[url];
   if (!response) {

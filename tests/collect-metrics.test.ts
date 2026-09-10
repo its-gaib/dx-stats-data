@@ -14,12 +14,15 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { dump, load } from "js-yaml";
-import type { ManualMetrics, MetricSnapshot } from "../scripts/metrics";
+import type { CrateDependents, ManualMetrics, MetricSnapshot } from "../scripts/metrics";
 
 const COLLECTOR = path.resolve(__dirname, "../scripts/collect-metrics.ts");
 const PRELOAD = path.resolve(__dirname, "helpers/collector-preload.mjs");
 const TSX = require.resolve("tsx");
 const TODAY = "2026-09-10";
+const CHECKED_AT = `${TODAY}T00:30:00.000Z`;
+const OBSERVED_AT = "2026-09-07T07:00:00.000Z";
+const RUN_ID = "2026-09-07T06:00:00.000Z";
 const TEST_TOKEN = "collector-test-token";
 const DISCOVERY = "https://api.github.com/orgs/pubky/repos?per_page=100&sort=stars&page=1";
 const PAGE_TWO = "https://api.github.com/orgs/pubky/repos?per_page=100&sort=stars&page=2";
@@ -49,6 +52,7 @@ interface MockResponse {
 interface MockRequest {
   url: string;
   headers: Record<string, string>;
+  hasSignal: boolean;
 }
 
 function emptyManual(): ManualMetrics {
@@ -73,6 +77,36 @@ function previousSnapshot(date = "2026-09-09"): MetricSnapshot {
   };
 }
 
+function publication(crate: string, rust: number, npm = 0) {
+  return {
+    crate,
+    updated_at: OBSERVED_AT,
+    total: rust,
+    summary: { independent: rust },
+    lists: { independent: Array.from({ length: rust }, (_, index) => ({ repo: `example/repo-${index}` })) },
+    npm_dependents: Array.from({ length: npm }, (_, index) => ({ name: `npm-${index}` })),
+    collection: {
+      status: "complete",
+      run_id: RUN_ID,
+      sources: {
+        crates_io: rust,
+        github_cargo_toml: rust,
+        github_cargo_lock: rust,
+        github_dependents: rust,
+        ...(crate === "mainline" ? {} : { npm_registry: npm, github_package_json: 0 }),
+      },
+    },
+  };
+}
+
+function expectedDependents(rust: number, npm: number): CrateDependents {
+  return {
+    rust,
+    npm,
+    source: { status: "current", observed_at: OBSERVED_AT, run_id: RUN_ID, checked_at: CHECKED_AT },
+  };
+}
+
 function defaultResponses(): Record<string, MockResponse> {
   return {
     [DISCOVERY]: { body: [] },
@@ -83,10 +117,10 @@ function defaultResponses(): Record<string, MockResponse> {
     [NPM["@synonymdev/pubky-app-specs"]]: { body: { downloads: 404 } },
     [CRATES.pkarr]: { body: { crate: { recent_downloads: 51, downloads: 501 } } },
     [CRATES.pubky]: { body: { crate: { recent_downloads: 62, downloads: 602 } } },
-    [DEPENDENTS.pkarr]: { body: { total: 7, npm_dependents: ["one", "two"] } },
-    [DEPENDENTS.pubky]: { body: { total: 8, npm_dependents: ["one"] } },
-    [DEPENDENTS["pubky-app-specs"]]: { body: { total: 9 } },
-    [DEPENDENTS.mainline]: { body: { total: 10, npm_dependents: "not an array" } },
+    [DEPENDENTS.pkarr]: { body: publication("pkarr", 7, 2) },
+    [DEPENDENTS.pubky]: { body: publication("pubky", 8, 1) },
+    [DEPENDENTS["pubky-app-specs"]]: { body: publication("pubky-app-specs", 9) },
+    [DEPENDENTS.mainline]: { body: publication("mainline", 10) },
   };
 }
 
@@ -94,6 +128,7 @@ function runCollector(options: {
   history?: string;
   responses?: Record<string, MockResponse>;
   token?: string;
+  now?: string;
 } = {}) {
   const directory = mkdtempSync(path.join(os.tmpdir(), "dx-stats-collector-"));
   const dataFile = path.join(directory, "data/metrics.yaml");
@@ -112,7 +147,7 @@ function runCollector(options: {
     }
     writeFileSync(requestsFile, "");
     writeFileSync(configFile, JSON.stringify({
-      now: `${TODAY}T00:30:00.000Z`,
+      now: options.now ?? CHECKED_AT,
       requestsFile,
       responses,
     }));
@@ -207,10 +242,10 @@ test("collects configured metrics, paginates repositories, and applies the five-
       pubky: { recent: 62, total: 602 },
     },
     dependents: {
-      pkarr: { rust: 7, npm: 2 },
-      pubky: { rust: 8, npm: 1 },
-      "pubky-app-specs": { rust: 9, npm: 0 },
-      mainline: { rust: 10, npm: 0 },
+      pkarr: expectedDependents(7, 2),
+      pubky: expectedDependents(8, 1),
+      "pubky-app-specs": expectedDependents(9, 0),
+      mainline: expectedDependents(10, 0),
     },
     manual: emptyManual(),
   }]);
@@ -225,7 +260,7 @@ test("collects configured metrics, paginates repositories, and applies the five-
     ...Object.values(CRATES),
     ...Object.values(DEPENDENTS),
   ]);
-  for (const { url, headers } of result.requests) {
+  for (const { url, headers, hasSignal } of result.requests) {
     if (new URL(url).hostname === "api.github.com") {
       assert.equal(headers.authorization, `Bearer ${TEST_TOKEN}`);
       assert.equal(headers.accept, "application/vnd.github.v3+json");
@@ -235,6 +270,9 @@ test("collects configured metrics, paginates repositories, and applies the five-
     }
     if (new URL(url).hostname === "crates.io") {
       assert.equal(headers["user-agent"], "dx-stats-collector (github.com/pubky/dx-stats)");
+    }
+    if (new URL(url).hostname === "its-gaib.github.io") {
+      assert.equal(hasSignal, true, "dependents requests must have a timeout signal");
     }
   }
 });
@@ -260,14 +298,19 @@ test("appends history and preserves the latest manual values, including zero and
   assert.deepEqual(snapshots[2].manual, latest.manual);
 });
 
-test("skips a duplicate day without requests or rewriting the file", () => {
-  const history = `# Keep this file byte-for-byte.\n${dump([previousSnapshot(TODAY)])}`;
-  const result = runCollector({ history, responses: {} });
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /already exists, skipping/);
-  assert.deepEqual(result.requests, []);
-  assert.equal(result.content, history);
-  assert.equal(result.afterModified, result.beforeModified);
+test("refreshes dependents on the same day while preserving unrelated metrics and manual edits", () => {
+  const earlier = previousSnapshot();
+  const today = previousSnapshot(TODAY);
+  today.manual.active_builders = 42;
+  const result = runCollector({ history: dump([earlier, today]) });
+  const snapshots = collected(result);
+  assert.match(result.stdout, /Refreshing dependents/);
+  assert.deepEqual(result.requests.map(({ url }) => url), Object.values(DEPENDENTS));
+  assert.equal(snapshots.length, 2);
+  assert.deepEqual(snapshots[0], earlier);
+  const { dependents, ...rest } = snapshots[1];
+  assert.deepEqual(rest, today);
+  assert.deepEqual(dependents?.pkarr, expectedDependents(7, 2));
 });
 
 test("supports requests without a GitHub token", () => {
@@ -279,7 +322,7 @@ test("supports requests without a GitHub token", () => {
   }
 });
 
-test("uses zero fallbacks for HTTP, network, and JSON failures", async (t) => {
+test("reports unavailable dependents without inventing zero on HTTP, network, and JSON failures", async (t) => {
   for (const failure of ["http", "network", "json"] as const) {
     await t.test(failure, () => {
       const responses = Object.fromEntries(
@@ -297,7 +340,14 @@ test("uses zero fallbacks for HTTP, network, and JSON failures", async (t) => {
         },
         npm: Object.fromEntries(Object.keys(NPM).map((name) => [name, { weekly: 0 }])),
         crates: Object.fromEntries(Object.keys(CRATES).map((name) => [name, { recent: 0, total: 0 }])),
-        dependents: Object.fromEntries(Object.keys(DEPENDENTS).map((name) => [name, { rust: 0, npm: 0 }])),
+        dependents: Object.fromEntries(Object.keys(DEPENDENTS).map((name) => [name, {
+          rust: null,
+          npm: null,
+          source: {
+            status: "unavailable", observed_at: null, run_id: null, checked_at: CHECKED_AT,
+            reason: failure === "json" ? "invalid_source" : "fetch_failed",
+          },
+        }])),
         manual: emptyManual(),
       });
       assert.match(result.stderr, /\[fetch\]/);
@@ -346,4 +396,162 @@ test("rejects a malformed API metric before overwriting valid history", () => {
   assert.ok(result.requests.length > 0);
   assert.equal(result.content, history);
   assert.equal(result.afterModified, result.beforeModified);
+});
+
+test("accepts verified zero counts and distinguishes them from missing observations", () => {
+  const responses = defaultResponses();
+  for (const [crate, url] of Object.entries(DEPENDENTS)) {
+    responses[url] = { body: { ...publication(crate, 0), summary: {}, lists: {} } };
+  }
+  const [snapshot] = collected(runCollector({ responses }));
+  for (const entry of Object.values(snapshot.dependents!)) {
+    assert.deepEqual(entry, expectedDependents(0, 0));
+  }
+});
+
+test("rejects incomplete or malformed publications as a whole batch", async (t) => {
+  type Payload = ReturnType<typeof publication>;
+  const cases: Array<[string, (payload: Payload) => void, string]> = [
+    ["wrong crate", (p) => { p.crate = "another-crate"; }, "invalid_source"],
+    ["partial collection", (p) => { p.collection.status = "partial"; }, "incomplete_source"],
+    ["missing completeness", (p) => { Reflect.deleteProperty(p, "collection"); }, "unverified_source"],
+    ["negative total", (p) => { p.total = -1; }, "invalid_source"],
+    ["unsafe total", (p) => { p.total = Number.MAX_SAFE_INTEGER + 1; }, "invalid_source"],
+    ["summary mismatch", (p) => { p.summary.independent += 1; }, "invalid_source"],
+    ["empty repository", (p) => { p.lists.independent[0].repo = ""; }, "invalid_source"],
+    ["extra list", (p) => { Object.assign(p.lists, { unknown: [] }); }, "invalid_source"],
+    ["missing source", (p) => { Reflect.deleteProperty(p.collection.sources, "github_cargo_lock"); }, "invalid_source"],
+    ["invalid source count", (p) => { p.collection.sources.github_dependents = -1; }, "invalid_source"],
+    ["invalid npm list", (p) => { Object.assign(p, { npm_dependents: {} }); }, "invalid_source"],
+    ["missing nonempty npm list", (p) => { Reflect.deleteProperty(p, "npm_dependents"); }, "invalid_source"],
+    ["npm source/list mismatch", (p) => { p.collection.sources.npm_registry = 8; }, "invalid_source"],
+    ["impossible observation date", (p) => { p.updated_at = "2026-02-30T12:00:00Z"; }, "invalid_source"],
+    ["invalid run ID", (p) => { p.collection.run_id = "not-a-date"; }, "invalid_source"],
+    ["future observation", (p) => { p.updated_at = "2026-09-10T00:36:00Z"; }, "invalid_source"],
+    ["run after observation", (p) => { p.collection.run_id = "2026-09-08T06:00:00Z"; }, "invalid_source"],
+    ["mixed publication", (p) => { p.collection.run_id = "2026-09-07T06:01:00Z"; }, "mixed_runs"],
+  ];
+  for (const [name, mutate, reason] of cases) {
+    await t.test(name, () => {
+      const responses = defaultResponses();
+      mutate(responses[DEPENDENTS.pkarr].body as Payload);
+      const [snapshot] = collected(runCollector({ responses }));
+      for (const value of Object.values(snapshot.dependents!)) {
+        assert.equal(value.rust, null, "no crate from a partially validated batch may be adopted");
+        assert.equal(value.npm, null);
+        assert.equal(value.source?.status, "unavailable");
+        assert.equal(value.source?.reason, reason);
+      }
+    });
+  }
+});
+
+test("requires explicit empty npm arrays for configured npm crates", () => {
+  const responses = defaultResponses();
+  Reflect.deleteProperty(responses[DEPENDENTS["pubky-app-specs"]].body as object, "npm_dependents");
+  const [snapshot] = collected(runCollector({ responses }));
+  assert.equal(snapshot.dependents?.pkarr.rust, null);
+  assert.equal(snapshot.dependents?.pkarr.source?.reason, "invalid_source");
+});
+
+test("preserves archived legacy counts as unverified without borrowing a new payload's timestamp", () => {
+  const previous = previousSnapshot();
+  previous.dependents = { pkarr: { rust: 123, npm: 45 } };
+  const responses = defaultResponses();
+  for (const url of Object.values(DEPENDENTS)) {
+    Reflect.deleteProperty(responses[url].body as object, "collection");
+  }
+  const snapshots = collected(runCollector({ history: dump([previous]), responses }));
+  assert.deepEqual(snapshots[0], previous);
+  assert.deepEqual(snapshots[1].dependents?.pkarr, {
+    rust: 123,
+    npm: 45,
+    source: {
+      status: "unverified", observed_at: null, run_id: null,
+      checked_at: CHECKED_AT, reason: "unverified_source",
+    },
+  });
+  assert.equal(snapshots[1].dependents?.pubky.rust, null);
+});
+
+test("fallback searches for the last verified observation before considering newer legacy counts", () => {
+  const verified = previousSnapshot("2026-09-08");
+  verified.dependents = { pkarr: expectedDependents(77, 5) };
+  const legacy = previousSnapshot();
+  legacy.dependents = { pkarr: { rust: 2, npm: 0 } };
+  const responses = defaultResponses();
+  responses[DEPENDENTS.pubky] = { failure: "http" };
+  const snapshots = collected(runCollector({ history: dump([verified, legacy]), responses }));
+  assert.deepEqual(snapshots.slice(0, 2), [verified, legacy]);
+  assert.deepEqual(snapshots[2].dependents?.pkarr, {
+    ...expectedDependents(77, 5),
+    source: { ...expectedDependents(77, 5).source!, status: "stale", reason: "fetch_failed" },
+  });
+});
+
+test("a failed same-day refresh preserves counts and a later verified publication corrects today's row", () => {
+  const initial = collected(runCollector());
+  initial[0].manual.active_builders = 42;
+  const responses = defaultResponses();
+  responses[DEPENDENTS.pkarr] = { failure: "network" };
+  const failed = runCollector({ history: dump(initial), responses, now: `${TODAY}T12:00:00.000Z` });
+  const retained = collected(failed);
+  assert.equal(retained.length, 1);
+  for (const [crate, value] of Object.entries(retained[0].dependents!)) {
+    assert.equal(value.rust, initial[0].dependents![crate].rust);
+    assert.equal(value.npm, initial[0].dependents![crate].npm);
+    assert.equal(value.source?.status, "stale");
+    assert.equal(value.source?.observed_at, OBSERVED_AT);
+    assert.equal(value.source?.run_id, RUN_ID);
+    assert.equal(value.source?.checked_at, `${TODAY}T12:00:00.000Z`);
+  }
+  const recoveredResponses = defaultResponses();
+  for (const [crate, url] of Object.entries(DEPENDENTS)) {
+    const payload = publication(crate, 70, crate === "mainline" ? 0 : 3);
+    payload.updated_at = `${TODAY}T13:00:00.000Z`;
+    payload.collection.run_id = `${TODAY}T12:45:00.000Z`;
+    recoveredResponses[url] = { body: payload };
+  }
+  const recovered = runCollector({
+    history: failed.content!, responses: recoveredResponses, now: `${TODAY}T14:00:00.000Z`,
+  });
+  const snapshots = collected(recovered);
+  assert.equal(snapshots.length, 1);
+  const { dependents, ...rest } = snapshots[0];
+  const { dependents: _initialDependents, ...initialRest } = initial[0];
+  assert.deepEqual(rest, initialRest);
+  assert.deepEqual(dependents?.pkarr, {
+    rust: 70, npm: 3,
+    source: {
+      status: "current", observed_at: `${TODAY}T13:00:00.000Z`,
+      run_id: `${TODAY}T12:45:00.000Z`, checked_at: `${TODAY}T14:00:00.000Z`,
+    },
+  });
+  assert.deepEqual(recovered.requests.map(({ url }) => url), Object.values(DEPENDENTS));
+});
+
+test("marks an unchanged successful observation stale after the eight-day freshness window", () => {
+  const fresh = collected(runCollector({ now: "2026-09-15T07:00:00.000Z" }));
+  assert.equal(fresh[0].dependents?.pkarr.source?.status, "current");
+  const stale = collected(runCollector({ now: "2026-09-15T07:00:00.001Z" }));
+  assert.equal(stale[0].dependents?.pkarr.source?.status, "stale");
+  assert.equal(stale[0].dependents?.pkarr.source?.reason, "source_too_old");
+  assert.equal(stale[0].dependents?.pkarr.source?.observed_at, OBSERVED_AT);
+});
+
+test("rejects a complete but older cached publication without moving observation time backward", () => {
+  const previous = previousSnapshot();
+  previous.dependents = { pkarr: expectedDependents(77, 5) };
+  const responses = defaultResponses();
+  for (const [crate, url] of Object.entries(DEPENDENTS)) {
+    const payload = publication(crate, 1);
+    payload.updated_at = "2026-08-31T07:00:00.000Z";
+    payload.collection.run_id = "2026-08-31T06:00:00.000Z";
+    responses[url] = { body: payload };
+  }
+  const snapshots = collected(runCollector({ history: dump([previous]), responses }));
+  assert.equal(snapshots[1].dependents?.pkarr.rust, 77);
+  assert.equal(snapshots[1].dependents?.pkarr.source?.observed_at, OBSERVED_AT);
+  assert.equal(snapshots[1].dependents?.pkarr.source?.reason, "source_regressed");
+  assert.equal(snapshots[1].dependents?.pubky.source?.status, "unavailable");
 });

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { dump, load } from "js-yaml";
-import { validateSnapshots } from "../scripts/metrics";
+import { validateSnapshots, type DependentsSource } from "../scripts/metrics";
 import { snapshot } from "./fixtures/snapshot";
 
 test("the committed metrics history satisfies the shared schema", () => {
@@ -89,7 +89,7 @@ test("requires nonnegative finite integer counts in every API field", () => {
     "dependents.example.rust",
     "dependents.example.npm",
   ]) {
-    for (const value of [undefined, null, -1, 0.5, NaN, Infinity, "1", true]) {
+    for (const value of [undefined, null, -1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1, "1", true]) {
       const entry = snapshot();
       const segments = field.split(".");
       let target = entry as unknown as Record<string, unknown>;
@@ -97,6 +97,56 @@ test("requires nonnegative finite integer counts in every API field", () => {
       target[segments.at(-1)!] = value;
       assert.throws(() => validateSnapshots([entry]), /must be a nonnegative finite integer/, field);
     }
+  }
+});
+
+function source(): DependentsSource {
+  return {
+    status: "current", observed_at: "2026-01-01T07:00:00.123456+00:00",
+    run_id: "2026-01-01T06:00:00.000000+00:00", checked_at: "2026-01-01T12:00:00.000Z",
+  };
+}
+
+test("accepts dependents provenance and only permits null counts for unavailable observations", () => {
+  for (const status of ["current", "stale", "unverified", "unavailable"] as const) {
+    const entry = snapshot();
+    entry.dependents!.example = {
+      rust: status === "unavailable" ? null : 0,
+      npm: status === "unavailable" ? null : 0,
+      source: {
+        ...source(), status,
+        observed_at: status === "unavailable" ? null : source().observed_at,
+        run_id: status === "unverified" || status === "unavailable" ? null : source().run_id,
+      },
+    };
+    validateSnapshots([entry]);
+  }
+});
+
+test("rejects malformed or contradictory provenance before publishing", () => {
+  for (const invalidSource of [
+    null, [], { ...source(), status: "complete" }, { ...source(), status: ["current"] },
+    { ...source(), checked_at: "not a date" },
+    { ...source(), observed_at: "2026-02-30T00:00:00Z" },
+    { ...source(), observed_at: "2026-01-02T00:00:00Z" },
+    { ...source(), observed_at: null },
+    { ...source(), run_id: "2026-01-01T11:00:00Z" },
+    { ...source(), checked_at: "2026-01-10T00:00:00Z" },
+    { ...source(), status: "unverified" },
+    { ...source(), status: "unavailable" },
+    { ...source(), reason: "unknown reason" },
+  ]) {
+    const entry = snapshot();
+    Object.assign(entry.dependents!.example, { source: invalidSource });
+    assert.throws(() => validateSnapshots([entry]), /source/);
+  }
+  for (const status of ["current", "stale", "unverified"] as const) {
+    const entry = snapshot();
+    Object.assign(entry.dependents!.example, {
+      rust: null, npm: null,
+      source: { ...source(), status, run_id: status === "unverified" ? null : source().run_id },
+    });
+    assert.throws(() => validateSnapshots([entry]), /must be a nonnegative finite integer/);
   }
 });
 

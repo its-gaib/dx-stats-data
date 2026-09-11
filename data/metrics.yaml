@@ -17544,3 +17544,140 @@
     docs_monthly_visitors: null
     bounty_completion_rate: null
     events_attended: null
+- date: '2026-09-11'
+  github:
+    org_followers: 151
+    repos:
+      pkdns-resolver-extension:
+        stars: 5
+        forks: 0
+        open_issues: 0
+      homeserver-dashboard:
+        stars: 9
+        forks: 0
+        open_issues: 7
+      paykit-rs:
+        stars: 6
+        forks: 0
+        open_issues: 17
+      pubky-tls-proxy:
+        stars: 7
+        forks: 1
+        open_issues: 0
+      pubky-app:
+        stars: 23
+        forks: 17
+        open_issues: 293
+      pubky-ring:
+        stars: 12
+        forks: 2
+        open_issues: 22
+      pubky-app-specs:
+        stars: 9
+        forks: 6
+        open_issues: 19
+      pwpw:
+        stars: 6
+        forks: 0
+        open_issues: 1
+      react-native-pubky:
+        stars: 6
+        forks: 3
+        open_issues: 0
+      pubky-nexus:
+        stars: 22
+        forks: 10
+        open_issues: 70
+      pubky-explorer:
+        stars: 12
+        forks: 4
+        open_issues: 6
+      atomicity:
+        stars: 23
+        forks: 3
+        open_issues: 0
+      pubky-knowledge-base:
+        stars: 8
+        forks: 4
+        open_issues: 1
+      pkdns:
+        stars: 192
+        forks: 17
+        open_issues: 9
+      pubky-beta:
+        stars: 11
+        forks: 2
+        open_issues: 125
+      pubky-homeserver:
+        stars: 87
+        forks: 30
+        open_issues: 79
+      mainline:
+        stars: 102
+        forks: 21
+        open_issues: 13
+      pkarr:
+        stars: 455
+        forks: 45
+        open_issues: 18
+  npm:
+    '@synonymdev/pubky':
+      weekly: 991
+    '@synonymdev/react-native-pubky':
+      weekly: 77
+    '@synonymdev/pkarr':
+      weekly: 31
+    '@synonymdev/pubky-app-specs':
+      weekly: 0
+  crates:
+    pkarr:
+      recent: 317691
+      total: 1189504
+    pubky:
+      recent: 3543
+      total: 23079
+  dependents:
+    pkarr:
+      rust: 613
+      npm: 48
+      source:
+        status: unverified
+        observed_at: null
+        run_id: null
+        checked_at: '2026-09-11T02:02:36.826Z'
+        reason: unverified_source
+    pubky:
+      rust: 29
+      npm: 70
+      source:
+        status: unverified
+        observed_at: null
+        run_id: null
+        checked_at: '2026-09-11T02:02:36.826Z'
+        reason: unverified_source
+    pubky-app-specs:
+      rust: 6
+      npm: 57
+      source:
+        status: unverified
+        observed_at: null
+        run_id: null
+        checked_at: '2026-09-11T02:02:36.826Z'
+        reason: unverified_source
+    mainline:
+      rust: 260
+      npm: 0
+      source:
+        status: unverified
+        observed_at: null
+        run_id: null
+        checked_at: '2026-09-11T02:02:36.826Z'
+        reason: unverified_source
+  manual:
+    ttfhw_minutes: null
+    active_builders: null
+    community_projects: null
+    homeserver_nodes: null
+    docs_monthly_visitors: null
+    bounty_completion_rate: null
+    events_attended: null

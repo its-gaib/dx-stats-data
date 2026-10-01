@@ -20384,7 +20384,7 @@
         status: unverified
         observed_at: null
         run_id: null
-        checked_at: '2026-10-01T03:05:36.867Z'
+        checked_at: '2026-10-01T17:42:40.834Z'
         reason: unverified_source
     pubky:
       rust: 29
@@ -20393,7 +20393,7 @@
         status: unverified
         observed_at: null
         run_id: null
-        checked_at: '2026-10-01T03:05:36.867Z'
+        checked_at: '2026-10-01T17:42:40.834Z'
         reason: unverified_source
     pubky-app-specs:
       rust: 6
@@ -20402,7 +20402,7 @@
         status: unverified
         observed_at: null
         run_id: null
-        checked_at: '2026-10-01T03:05:36.867Z'
+        checked_at: '2026-10-01T17:42:40.834Z'
         reason: unverified_source
     mainline:
       rust: 260
@@ -20411,7 +20411,7 @@
         status: unverified
         observed_at: null
         run_id: null
-        checked_at: '2026-10-01T03:05:36.867Z'
+        checked_at: '2026-10-01T17:42:40.834Z'
         reason: unverified_source
   manual:
     ttfhw_minutes: null

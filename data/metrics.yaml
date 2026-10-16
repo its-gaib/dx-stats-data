@@ -22427,7 +22427,7 @@
         status: current
         observed_at: '2026-10-12T22:19:17.323022+00:00'
         run_id: '2026-10-12T21:41:04.856441+00:00'
-        checked_at: '2026-10-16T02:13:58.293Z'
+        checked_at: '2026-10-16T15:46:03.485Z'
     pubky:
       rust: 36
       npm: 80
@@ -22435,7 +22435,7 @@
         status: current
         observed_at: '2026-10-12T22:29:05.206341+00:00'
         run_id: '2026-10-12T21:41:04.856441+00:00'
-        checked_at: '2026-10-16T02:13:58.293Z'
+        checked_at: '2026-10-16T15:46:03.485Z'
     pubky-app-specs:
       rust: 9
       npm: 58
@@ -22443,7 +22443,7 @@
         status: current
         observed_at: '2026-10-12T22:29:42.069036+00:00'
         run_id: '2026-10-12T21:41:04.856441+00:00'
-        checked_at: '2026-10-16T02:13:58.293Z'
+        checked_at: '2026-10-16T15:46:03.485Z'
     mainline:
       rust: 284
       npm: 0
@@ -22451,7 +22451,7 @@
         status: current
         observed_at: '2026-10-12T22:50:26.564046+00:00'
         run_id: '2026-10-12T21:41:04.856441+00:00'
-        checked_at: '2026-10-16T02:13:58.293Z'
+        checked_at: '2026-10-16T15:46:03.485Z'
   manual:
     ttfhw_minutes: null
     active_builders: null

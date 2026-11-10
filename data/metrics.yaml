@@ -25832,7 +25832,7 @@
         status: stale
         observed_at: '2026-10-12T22:19:17.323022+00:00'
         run_id: '2026-10-12T21:41:04.856441+00:00'
-        checked_at: '2026-11-10T05:12:34.978Z'
+        checked_at: '2026-11-10T19:01:48.895Z'
         reason: source_too_old
     pubky:
       rust: 36
@@ -25841,7 +25841,7 @@
         status: stale
         observed_at: '2026-10-12T22:29:05.206341+00:00'
         run_id: '2026-10-12T21:41:04.856441+00:00'
-        checked_at: '2026-11-10T05:12:34.978Z'
+        checked_at: '2026-11-10T19:01:48.895Z'
         reason: source_too_old
     pubky-app-specs:
       rust: 9
@@ -25850,7 +25850,7 @@
         status: stale
         observed_at: '2026-10-12T22:29:42.069036+00:00'
         run_id: '2026-10-12T21:41:04.856441+00:00'
-        checked_at: '2026-11-10T05:12:34.978Z'
+        checked_at: '2026-11-10T19:01:48.895Z'
         reason: source_too_old
     mainline:
       rust: 284
@@ -25859,7 +25859,7 @@
         status: stale
         observed_at: '2026-10-12T22:50:26.564046+00:00'
         run_id: '2026-10-12T21:41:04.856441+00:00'
-        checked_at: '2026-11-10T05:12:34.978Z'
+        checked_at: '2026-11-10T19:01:48.895Z'
         reason: source_too_old
   manual:
     ttfhw_minutes: null
